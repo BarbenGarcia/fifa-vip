@@ -2,9 +2,9 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
+import { getWorldNews, getFootballNews, getZurichWeather } from "./db";
 
 export const appRouter = router({
-    // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
@@ -17,12 +17,19 @@ export const appRouter = router({
     }),
   }),
 
-  // TODO: add feature routers here, e.g.
-  // todo: router({
-  //   list: protectedProcedure.query(({ ctx }) =>
-  //     db.getUserTodos(ctx.user.id)
-  //   ),
-  // }),
+  news: router({
+    getWorld: publicProcedure.query(async () => {
+      return getWorldNews(10);
+    }),
+    getFootball: publicProcedure.query(async () => {
+      return getFootballNews(10);
+    }),
+  }),
+  weather: router({
+    getZurich: publicProcedure.query(async () => {
+      return getZurichWeather();
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

@@ -25,4 +25,39 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Cache for news articles to reduce API calls
+ */
+export const newsCache = mysqlTable("newsCache", {
+  id: int("id").autoincrement().primaryKey(),
+  category: varchar("category", { length: 50 }).notNull(), // 'world' or 'football'
+  title: text("title").notNull(),
+  description: text("description"),
+  url: varchar("url", { length: 512 }).notNull(),
+  imageUrl: varchar("imageUrl", { length: 512 }),
+  source: varchar("source", { length: 255 }),
+  publishedAt: timestamp("publishedAt"),
+  fetchedAt: timestamp("fetchedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type NewsCache = typeof newsCache.$inferSelect;
+export type InsertNewsCache = typeof newsCache.$inferInsert;
+
+/**
+ * Cache for weather data
+ */
+export const weatherCache = mysqlTable("weatherCache", {
+  id: int("id").autoincrement().primaryKey(),
+  location: varchar("location", { length: 100 }).notNull(), // 'zurich'
+  temperature: varchar("temperature", { length: 50 }),
+  weatherCode: int("weatherCode"),
+  windSpeed: varchar("windSpeed", { length: 50 }),
+  humidity: varchar("humidity", { length: 50 }),
+  description: varchar("description", { length: 255 }),
+  fetchedAt: timestamp("fetchedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type WeatherCache = typeof weatherCache.$inferSelect;
+export type InsertWeatherCache = typeof weatherCache.$inferInsert;
