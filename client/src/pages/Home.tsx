@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Cloud, Newspaper, Trophy } from 'lucide-react';
+import { RefreshCw, Cloud, Newspaper, Trophy, Zap } from 'lucide-react';
 import { APP_LOGO, APP_TITLE } from '@/const';
 
 interface NewsArticle {
@@ -24,6 +24,19 @@ interface Weather {
   description: string | null;
 }
 
+interface Match {
+  id: number;
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  date: string;
+  league: string;
+  status: string;
+  homeTeamLogo?: string;
+  awayTeamLogo?: string;
+}
+
 export default function Home() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -32,6 +45,7 @@ export default function Home() {
   const worldNews = trpc.news.getWorld.useQuery();
   const footballNews = trpc.news.getFootball.useQuery();
   const weather = trpc.weather.getZurich.useQuery();
+  const matches = trpc.matches.getRecent.useQuery();
 
   // Update time every second
   useEffect(() => {
@@ -46,6 +60,7 @@ export default function Home() {
       worldNews.refetch(),
       footballNews.refetch(),
       weather.refetch(),
+      matches.refetch(),
     ]);
     setIsRefreshing(false);
   };
@@ -53,6 +68,7 @@ export default function Home() {
   const weatherData = weather.data as Weather | null;
   const worldNewsData = (worldNews.data || []) as NewsArticle[];
   const footballNewsData = (footballNews.data || []) as NewsArticle[];
+  const matchesData = (matches.data || []) as Match[];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -144,6 +160,56 @@ export default function Home() {
           </Card>
         </div>
 
+        {/* Match Results Section */}
+        {matchesData.length > 0 && (
+          <div className="mb-12">
+            <div className="flex items-center gap-3 mb-6">
+              <Zap className="w-8 h-8 text-yellow-400" />
+              <h2 className="text-3xl font-bold text-white">Latest Match Results</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {matchesData.slice(0, 6).map((match) => (
+                <Card key={match.id} className="bg-slate-800 border-slate-700 border-2">
+                  <CardContent className="p-6">
+                    <p className="text-sm text-slate-400 mb-3">{match.league}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 text-center">
+                        <p className="text-lg font-semibold text-white mb-2">{match.homeTeam}</p>
+                        {match.homeTeamLogo && (
+                          <img src={match.homeTeamLogo} alt={match.homeTeam} className="h-12 w-12 mx-auto mb-2" />
+                        )}
+                      </div>
+                      <div className="px-4">
+                        <p className="text-4xl font-bold text-white">
+                          {match.homeScore !== null ? match.homeScore : '-'}
+                        </p>
+                        <p className="text-sm text-slate-400 text-center">vs</p>
+                        <p className="text-4xl font-bold text-white">
+                          {match.awayScore !== null ? match.awayScore : '-'}
+                        </p>
+                      </div>
+                      <div className="flex-1 text-center">
+                        <p className="text-lg font-semibold text-white mb-2">{match.awayTeam}</p>
+                        {match.awayTeamLogo && (
+                          <img src={match.awayTeamLogo} alt={match.awayTeam} className="h-12 w-12 mx-auto mb-2" />
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 text-center mt-3">
+                      {new Date(match.date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* News Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* World News */}
@@ -156,10 +222,10 @@ export default function Home() {
               {worldNews.isLoading ? (
                 <div className="text-slate-400">Loading news...</div>
               ) : worldNewsData.length > 0 ? (
-                worldNewsData.map((article, idx) => (
+                worldNewsData.slice(0, 5).map((article, idx) => (
                   <Card
                     key={idx}
-                    className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-all cursor-pointer"
+                    className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-all cursor-pointer border-2"
                     onClick={() => window.open(article.url, '_blank')}
                   >
                     <CardContent className="p-6">
@@ -193,20 +259,20 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Football/FIFA News */}
+          {/* Soccer/Football News */}
           <div>
             <div className="flex items-center gap-3 mb-6">
               <Trophy className="w-8 h-8 text-yellow-400" />
-              <h2 className="text-3xl font-bold text-white">Football & FIFA News</h2>
+              <h2 className="text-3xl font-bold text-white">Soccer & FIFA News</h2>
             </div>
             <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
               {footballNews.isLoading ? (
                 <div className="text-slate-400">Loading news...</div>
               ) : footballNewsData.length > 0 ? (
-                footballNewsData.map((article, idx) => (
+                footballNewsData.slice(0, 5).map((article, idx) => (
                   <Card
                     key={idx}
-                    className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-all cursor-pointer"
+                    className="bg-slate-800 border-slate-700 hover:border-slate-600 transition-all cursor-pointer border-2"
                     onClick={() => window.open(article.url, '_blank')}
                   >
                     <CardContent className="p-6">

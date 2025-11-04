@@ -50,11 +50,11 @@ async function refreshNews() {
       console.log(`[Jobs] Updated ${worldNews.length} world news articles`);
     }
     
-    console.log('[Jobs] Refreshing football news...');
+    console.log('[Jobs] Refreshing soccer news (football)...');
     const footballNews = await fetchFootballNews();
     if (footballNews.length > 0) {
       await updateNewsCache('football', footballNews);
-      console.log(`[Jobs] Updated ${footballNews.length} football news articles`);
+      console.log(`[Jobs] Updated ${footballNews.length} soccer news articles`);
     }
   } catch (error) {
     console.error('[Jobs] Error refreshing news:', error);

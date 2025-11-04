@@ -32,3 +32,13 @@
 - [ ] Create checkpoint before deployment
 - [ ] Deploy to production
 
+
+
+## Recent Changes (Phase 5)
+- [x] Filter football news to show only soccer/fútbol (exclude American Football)
+- [x] Improve soccer news query with multiple keywords
+- [x] Add extensive exclusion list for American football variants
+- [x] Test soccer news filtering and match results display
+- [ ] Add match results section with important game scores (optional enhancement)
+- [ ] Integrate sports API for live match data (optional enhancement)
+

@@ -29,12 +29,12 @@ export async function fetchWorldNews() {
 }
 
 /**
- * Fetch football/FIFA news from NewsAPI
+ * Fetch football/FIFA news from NewsAPI (soccer only, excluding American Football)
  */
 export async function fetchFootballNews() {
   try {
     const response = await fetch(
-      `https://newsapi.org/v2/everything?q=football%20OR%20FIFA%20OR%20soccer&language=en&sortBy=publishedAt&pageSize=10&apiKey=${NEWS_API_KEY}`
+      `https://newsapi.org/v2/everything?q=soccer%20OR%20(football%20AND%20(fifa%20OR%20goal%20OR%20premier%20OR%20champions%20OR%20league))&language=en&sortBy=publishedAt&pageSize=30&apiKey=${NEWS_API_KEY}`
     );
     
     if (!response.ok) {
@@ -43,9 +43,105 @@ export async function fetchFootballNews() {
     }
     
     const data = await response.json();
-    return data.articles || [];
+    // Filter out non-soccer articles
+    const filtered = (data.articles || []).filter((article: any) => {
+      const title = article.title?.toLowerCase() || '';
+      const desc = article.description?.toLowerCase() || '';
+      const source = article.source?.name?.toLowerCase() || '';
+      const content = (title + ' ' + desc + ' ' + source).toLowerCase();
+      
+      // Exclude non-soccer sports and American football variants
+      const excludeKeywords = [
+        'nfl', 'american football', 'nfl draft', 'super bowl', 'nfl playoffs',
+        'basketball', 'nba', 'baseball', 'mlb', 'hockey', 'nhl',
+        'tennis', 'golf', 'cricket', 'rugby', 'nba draft',
+        'auburn', 'alabama', 'clemson', 'ohio state', 'college football',
+        'ncaa', 'sec football', 'acc football', 'big ten', 'football coach',
+        'touchdown', 'nfl season', 'nfl game', 'college sports',
+        'georgia football', 'texas football', 'florida football', 'lsu football',
+        'michigan football', 'notre dame', 'penn state', 'florida state',
+        'athletic director', 'coach hire', 'recruiting', 'transfer portal'
+      ];
+      
+      for (const keyword of excludeKeywords) {
+        if (content.includes(keyword)) {
+          return false;
+        }
+      }
+      
+      // Include only if it has soccer-specific keywords
+      const soccerKeywords = ['soccer', 'fifa', 'premier league', 'champions league', 
+                              'la liga', 'bundesliga', 'serie a', 'world cup', 'euro',
+                              'messi', 'ronaldo', 'haaland', 'neymar', 'vinicius',
+                              'manchester united', 'liverpool', 'manchester city', 'arsenal',
+                              'real madrid', 'barcelona', 'psg', 'juventus', 'inter milan',
+                              'tottenham', 'chelsea', 'aston villa', 'newcastle', 'brighton',
+                              'ac milan', 'napoli', 'lazio', 'roma', 'fiorentina',
+                              'dortmund', 'hamburg', 'schalke', 'cologne', 'leverkusen',
+                              'lyon', 'marseille', 'monaco', 'toulouse', 'lens', 'goal', 'match'];
+      
+      // Check for soccer keywords
+      const hasSoccerKeyword = soccerKeywords.some(keyword => content.includes(keyword));
+      
+      // If it has soccer keywords, include it
+      if (hasSoccerKeyword) {
+        return true;
+      }
+      
+      // Otherwise exclude
+      return false;
+    });
+    
+    return filtered.slice(0, 10);
   } catch (error) {
     console.error('Failed to fetch football news:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch recent match results from API-Football
+ */
+export async function fetchMatchResults() {
+  try {
+    // Using free API-Football endpoint for recent matches
+    // This gets the latest matches from major leagues
+    const response = await fetch(
+      'https://api.api-football.com/v3/fixtures?last=10&league=39&season=2025',
+      {
+        headers: {
+          'x-apisports-key': 'demo' // Using demo key - can be upgraded with paid plan
+        }
+      }
+    );
+    
+    if (!response.ok) {
+      console.error('API-Football error:', response.statusText);
+      // Fallback: return empty array if API fails
+      return [];
+    }
+    
+    const data = await response.json();
+    
+    if (!data.response || !Array.isArray(data.response)) {
+      return [];
+    }
+    
+    // Transform API response to match results format
+    return data.response.map((match: any) => ({
+      id: match.fixture.id,
+      homeTeam: match.teams.home.name,
+      awayTeam: match.teams.away.name,
+      homeScore: match.goals.home,
+      awayScore: match.goals.away,
+      date: match.fixture.date,
+      league: match.league.name,
+      status: match.fixture.status.short,
+      homeTeamLogo: match.teams.home.logo,
+      awayTeamLogo: match.teams.away.logo,
+    }));
+  } catch (error) {
+    console.error('Failed to fetch match results:', error);
     return [];
   }
 }
