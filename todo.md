@@ -42,3 +42,14 @@
 - [ ] Add match results section with important game scores (optional enhancement)
 - [ ] Integrate sports API for live match data (optional enhancement)
 
+
+
+## Phase 6: Personalization for Dan O'Toole (FIFA Executive)
+- [x] Update news filters to show only FIFA-specific news and international competitions
+- [x] Change color scheme to FIFA brand colors (blue and gold/white)
+- [x] Update header with FIFA branding for Dan O'Toole
+- [x] Test all personalization changes
+- [ ] Add upcoming FIFA events/competitions section (World Cup, Euro, Copa América, etc.) - Optional
+- [ ] Add FIFA rankings section (national teams, confederations) - Optional
+- [ ] Add calendar widget for major FIFA events - Optional
+

@@ -34,7 +34,7 @@ export async function fetchWorldNews() {
 export async function fetchFootballNews() {
   try {
     const response = await fetch(
-      `https://newsapi.org/v2/everything?q=soccer%20OR%20(football%20AND%20(fifa%20OR%20goal%20OR%20premier%20OR%20champions%20OR%20league))&language=en&sortBy=publishedAt&pageSize=30&apiKey=${NEWS_API_KEY}`
+      `https://newsapi.org/v2/everything?q=FIFA%20OR%20world%20cup%20OR%20euro%20OR%20copa%20america%20OR%20international%20football%20OR%20national%20team%20OR%20UEFA%20OR%20CONMEBOL%20OR%20CAF%20OR%20qualifying%20OR%20nations%20league&language=en&sortBy=publishedAt&pageSize=50&apiKey=${NEWS_API_KEY}`
     );
     
     if (!response.ok) {
@@ -60,7 +60,8 @@ export async function fetchFootballNews() {
         'touchdown', 'nfl season', 'nfl game', 'college sports',
         'georgia football', 'texas football', 'florida football', 'lsu football',
         'michigan football', 'notre dame', 'penn state', 'florida state',
-        'athletic director', 'coach hire', 'recruiting', 'transfer portal'
+        'athletic director', 'coach hire', 'recruiting', 'transfer portal',
+        'radiohead', 'music', 'concert', 'band', 'album', 'song'
       ];
       
       for (const keyword of excludeKeywords) {
@@ -69,22 +70,17 @@ export async function fetchFootballNews() {
         }
       }
       
-      // Include only if it has soccer-specific keywords
-      const soccerKeywords = ['soccer', 'fifa', 'premier league', 'champions league', 
-                              'la liga', 'bundesliga', 'serie a', 'world cup', 'euro',
-                              'messi', 'ronaldo', 'haaland', 'neymar', 'vinicius',
-                              'manchester united', 'liverpool', 'manchester city', 'arsenal',
-                              'real madrid', 'barcelona', 'psg', 'juventus', 'inter milan',
-                              'tottenham', 'chelsea', 'aston villa', 'newcastle', 'brighton',
-                              'ac milan', 'napoli', 'lazio', 'roma', 'fiorentina',
-                              'dortmund', 'hamburg', 'schalke', 'cologne', 'leverkusen',
-                              'lyon', 'marseille', 'monaco', 'toulouse', 'lens', 'goal', 'match'];
+      // Include if it has FIFA/international competition keywords
+      const fifaKeywords = ['fifa', 'world cup', 'euro', 'copa america', 'international football',
+                            'national team', 'confederation', 'concacaf', 'conmebol', 'uefa', 'afc', 'caf',
+                            'african cup', 'asian cup', 'gold cup', 'nations league',
+                            'qualifying', 'tournament', 'championship', 'international match', 'friendly match'];
       
-      // Check for soccer keywords
-      const hasSoccerKeyword = soccerKeywords.some(keyword => content.includes(keyword));
+      // Check for FIFA/international keywords
+      const hasFIFAKeyword = fifaKeywords.some(keyword => content.includes(keyword));
       
-      // If it has soccer keywords, include it
-      if (hasSoccerKeyword) {
+      // If it has FIFA/international keywords, include it
+      if (hasFIFAKeyword) {
         return true;
       }
       
@@ -92,7 +88,7 @@ export async function fetchFootballNews() {
       return false;
     });
     
-    return filtered.slice(0, 10);
+      return filtered.slice(0, 15);
   } catch (error) {
     console.error('Failed to fetch football news:', error);
     return [];
