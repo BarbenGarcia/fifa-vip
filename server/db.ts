@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, newsCache, weatherCache } from "../drizzle/schema";
+import { InsertUser, users, newsCache, weatherCache, matchesCache, InsertMatchesCache } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -190,5 +190,62 @@ export async function updateWeatherCache(weatherData: any) {
     });
   } catch (error) {
     console.error('[Database] Failed to update weather cache:', error);
+  }
+}
+
+
+/**
+ * Get cached live matches and upcoming fixtures
+ */
+export async function getLiveMatches(limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db
+    .select()
+    .from(matchesCache)
+    .orderBy((t) => t.matchDate)
+    .limit(limit);
+  
+  return result;
+}
+
+/**
+ * Update cached matches
+ */
+export async function updateMatchesCache(matches: any[]) {
+  const db = await getDb();
+  if (!db) return;
+  
+  try {
+    // Delete old matches (older than 7 days)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    
+    // Upsert new matches
+    for (const match of matches) {
+      const values: InsertMatchesCache = {
+        matchId: match.matchId,
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        homeScore: match.homeScore,
+        awayScore: match.awayScore,
+        league: match.league,
+        leagueCountry: match.leagueCountry,
+        matchDate: match.matchDate,
+        status: match.status,
+        homeTeamLogo: match.homeTeamLogo,
+        awayTeamLogo: match.awayTeamLogo,
+      };
+      
+      await db.insert(matchesCache).values(values).onDuplicateKeyUpdate({
+        set: {
+          homeScore: match.homeScore,
+          awayScore: match.awayScore,
+          status: match.status,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('[Database] Failed to update matches cache:', error);
   }
 }

@@ -2,7 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { getWorldNews, getFootballNews, getZurichWeather } from "./db";
+import { getWorldNews, getFootballNews, getZurichWeather, getLiveMatches } from "./db";
 import { fetchMatchResults } from "./services";
 
 export const appRouter = router({
@@ -34,6 +34,9 @@ export const appRouter = router({
   matches: router({
     getRecent: publicProcedure.query(async () => {
       return fetchMatchResults();
+    }),
+    getLive: publicProcedure.query(async () => {
+      return getLiveMatches(30);
     }),
   }),
 });

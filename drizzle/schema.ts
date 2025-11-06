@@ -61,3 +61,26 @@ export const weatherCache = mysqlTable("weatherCache", {
 
 export type WeatherCache = typeof weatherCache.$inferSelect;
 export type InsertWeatherCache = typeof weatherCache.$inferInsert;
+
+/**
+ * Cache for live match scores and upcoming fixtures
+ */
+export const matchesCache = mysqlTable("matchesCache", {
+  id: int("id").autoincrement().primaryKey(),
+  matchId: varchar("matchId", { length: 100 }).notNull().unique(), // External API match ID
+  homeTeam: varchar("homeTeam", { length: 255 }).notNull(),
+  awayTeam: varchar("awayTeam", { length: 255 }).notNull(),
+  homeScore: int("homeScore"),
+  awayScore: int("awayScore"),
+  league: varchar("league", { length: 255 }).notNull(), // 'Premier League', 'La Liga', etc.
+  leagueCountry: varchar("leagueCountry", { length: 100 }), // 'England', 'Spain', etc.
+  matchDate: timestamp("matchDate").notNull(),
+  status: varchar("status", { length: 50 }).notNull(), // 'scheduled', 'live', 'finished'
+  homeTeamLogo: varchar("homeTeamLogo", { length: 512 }),
+  awayTeamLogo: varchar("awayTeamLogo", { length: 512 }),
+  fetchedAt: timestamp("fetchedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MatchesCache = typeof matchesCache.$inferSelect;
+export type InsertMatchesCache = typeof matchesCache.$inferInsert;

@@ -53,6 +53,7 @@ export default function Home() {
   const footballNews = trpc.news.getFootball.useQuery();
   const weather = trpc.weather.getZurich.useQuery();
   const matches = trpc.matches.getRecent.useQuery();
+  const liveMatches = trpc.matches.getLive.useQuery();
 
   // Update time every second
   useEffect(() => {
@@ -68,6 +69,7 @@ export default function Home() {
       footballNews.refetch(),
       weather.refetch(),
       matches.refetch(),
+      liveMatches.refetch(),
     ]);
     setIsRefreshing(false);
   };
@@ -235,6 +237,65 @@ export default function Home() {
                 <div className="text-lg text-gray-300">No FIFA news available</div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Live Matches & Upcoming Fixtures Widget */}
+        <div className="mb-12">
+          <div className="flex items-center gap-3 mb-6">
+            <Zap className="w-8 h-8" style={{ color: fifaGold }} />
+            <h2 className="text-3xl font-bold">Live Matches & Upcoming Fixtures</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+            {liveMatches.isLoading ? (
+              <div className="col-span-full text-lg text-gray-300">Loading matches...</div>
+            ) : (liveMatches.data || []).length > 0 ? (
+              (liveMatches.data || []).map((match: any) => (
+                <div
+                  key={match.id}
+                  className="p-4 rounded-lg transition-all hover:scale-105"
+                  style={{ backgroundColor: 'rgba(255, 215, 0, 0.1)', borderLeft: `4px solid ${fifaGold}` }}
+                >
+                  <div className="text-xs font-semibold mb-2" style={{ color: fifaGold }}>
+                    {match.league} - {match.leagueCountry}
+                  </div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col items-center flex-1">
+                      {match.homeTeamLogo && (
+                        <img src={match.homeTeamLogo} alt={match.homeTeam} className="w-8 h-8 mb-1" />
+                      )}
+                      <div className="text-sm font-bold text-white text-center line-clamp-2">{match.homeTeam}</div>
+                    </div>
+                    <div className="flex flex-col items-center px-3">
+                      <div className="text-2xl font-bold text-white">
+                        {match.homeScore !== null && match.awayScore !== null
+                          ? `${match.homeScore} - ${match.awayScore}`
+                          : 'vs'}
+                      </div>
+                      <div className="text-xs" style={{ color: fifaGold }}>
+                        {match.status === 'live' ? 'LIVE' : match.status === 'scheduled' ? 'SOON' : 'FT'}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center flex-1">
+                      {match.awayTeamLogo && (
+                        <img src={match.awayTeamLogo} alt={match.awayTeam} className="w-8 h-8 mb-1" />
+                      )}
+                      <div className="text-sm font-bold text-white text-center line-clamp-2">{match.awayTeam}</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-gray-400 text-center">
+                    {new Date(match.matchDate).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-lg text-gray-300">No matches available</div>
+            )}
           </div>
         </div>
 

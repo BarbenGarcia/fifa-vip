@@ -15,6 +15,13 @@
       "when": 1762200780094,
       "tag": "0001_exotic_dreaming_celestial",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1762466518472,
+      "tag": "0002_awesome_squirrel_girl",
+      "breakpoints": true
     }
   ]
 }

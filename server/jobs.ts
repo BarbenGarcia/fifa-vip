@@ -2,11 +2,12 @@
  * Background jobs for refreshing news and weather data
  */
 
-import { fetchWorldNews, fetchFootballNews, fetchZurichWeather } from './services';
-import { updateNewsCache, updateWeatherCache } from './db';
+import { fetchWorldNews, fetchFootballNews, fetchZurichWeather, fetchLiveMatchesAndFixtures } from './services';
+import { updateNewsCache, updateWeatherCache, updateMatchesCache } from './db';
 
 let newsRefreshInterval: NodeJS.Timeout | null = null;
 let weatherRefreshInterval: NodeJS.Timeout | null = null;
+let matchesRefreshInterval: NodeJS.Timeout | null = null;
 
 /**
  * Start background jobs for refreshing data
@@ -21,6 +22,10 @@ export function startBackgroundJobs() {
   // Refresh weather every 15 minutes
   refreshWeather();
   weatherRefreshInterval = setInterval(refreshWeather, 15 * 60 * 1000);
+  
+  // Refresh matches every 5 minutes
+  refreshMatches();
+  matchesRefreshInterval = setInterval(refreshMatches, 5 * 60 * 1000);
 }
 
 /**
@@ -34,6 +39,10 @@ export function stopBackgroundJobs() {
   if (weatherRefreshInterval) {
     clearInterval(weatherRefreshInterval);
     weatherRefreshInterval = null;
+  }
+  if (matchesRefreshInterval) {
+    clearInterval(matchesRefreshInterval);
+    matchesRefreshInterval = null;
   }
   console.log('[Jobs] Background jobs stopped');
 }
@@ -74,5 +83,21 @@ async function refreshWeather() {
     }
   } catch (error) {
     console.error('[Jobs] Error refreshing weather:', error);
+  }
+}
+
+/**
+ * Refresh live matches and upcoming fixtures
+ */
+async function refreshMatches() {
+  try {
+    console.log('[Jobs] Refreshing live matches and fixtures...');
+    const matches = await fetchLiveMatchesAndFixtures();
+    if (matches.length > 0) {
+      await updateMatchesCache(matches);
+      console.log(`[Jobs] Updated ${matches.length} matches`);
+    }
+  } catch (error) {
+    console.error('[Jobs] Error refreshing matches:', error);
   }
 }

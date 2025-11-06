@@ -205,3 +205,73 @@ function getWeatherDescription(code: number): string {
   
   return descriptions[code] || 'Unknown';
 }
+
+
+/**
+ * Fetch live matches and upcoming fixtures from major international leagues
+ * Includes: Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League
+ */
+export async function fetchLiveMatchesAndFixtures() {
+  try {
+    // League IDs for API-Football (free tier supports these)
+    const leagues = [
+      { id: 39, name: 'Premier League', country: 'England' },
+      { id: 140, name: 'La Liga', country: 'Spain' },
+      { id: 135, name: 'Serie A', country: 'Italy' },
+      { id: 78, name: 'Bundesliga', country: 'Germany' },
+      { id: 61, name: 'Ligue 1', country: 'France' },
+      { id: 2, name: 'Champions League', country: 'International' }
+    ];
+
+    const allMatches: any[] = [];
+
+    // Fetch matches for each league
+    for (const league of leagues) {
+      try {
+        // Get today's and upcoming matches
+        const response = await fetch(
+          `https://api.api-football.com/v3/fixtures?league=${league.id}&season=2024&status=LIVE,NS,PST&next=20`,
+          {
+            headers: {
+              'x-apisports-key': 'demo' // Demo key - limited requests
+            }
+          }
+        );
+
+        if (!response.ok) {
+          console.warn(`Failed to fetch ${league.name} matches:`, response.statusText);
+          continue;
+        }
+
+        const data = await response.json();
+
+        if (data.response && Array.isArray(data.response)) {
+          const matches = data.response.map((match: any) => ({
+            matchId: `${match.fixture.id}`,
+            homeTeam: match.teams.home.name,
+            awayTeam: match.teams.away.name,
+            homeScore: match.goals.home,
+            awayScore: match.goals.away,
+            league: league.name,
+            leagueCountry: league.country,
+            matchDate: new Date(match.fixture.date),
+            status: match.fixture.status.short === 'LIVE' ? 'live' : 
+                   match.fixture.status.short === 'NS' ? 'scheduled' : 'finished',
+            homeTeamLogo: match.teams.home.logo,
+            awayTeamLogo: match.teams.away.logo,
+          }));
+
+          allMatches.push(...matches);
+        }
+      } catch (error) {
+        console.warn(`Error fetching ${league.name}:`, error);
+        continue;
+      }
+    }
+
+    return allMatches;
+  } catch (error) {
+    console.error('Failed to fetch live matches and fixtures:', error);
+    return [];
+  }
+}

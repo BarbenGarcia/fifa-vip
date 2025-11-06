@@ -53,3 +53,17 @@
 - [ ] Add FIFA rankings section (national teams, confederations) - Optional
 - [ ] Add calendar widget for major FIFA events - Optional
 
+
+
+## Phase 7: Live Match Scores & Upcoming Fixtures Widget
+- [x] Research and integrate sports API for live match data (API-Football)
+- [x] Create database schema for storing match data (matchesCache table)
+- [x] Add tRPC procedures for fetching live matches and upcoming fixtures
+- [x] Create backend service to fetch data from sports API (all major leagues)
+- [x] Add background job to refresh match data every 5 minutes
+- [x] Create React component for live matches widget
+- [x] Style widgets with FIFA branding (blue and gold)
+- [x] Add match details: teams, scores, league, time, status
+- [x] Test all match data integration
+- [ ] Note: API-Football requires paid subscription for full access (demo key has limitations)
+
