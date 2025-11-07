@@ -48,47 +48,17 @@ export async function fetchFootballNews() {
       const title = article.title?.toLowerCase() || '';
       const desc = article.description?.toLowerCase() || '';
       const source = article.source?.name?.toLowerCase() || '';
-      const content = (title + ' ' + desc + ' ' + source).toLowerCase();
       
-      // Exclude non-soccer sports and American football variants
-      const excludeKeywords = [
-        'nfl', 'american football', 'nfl draft', 'super bowl', 'nfl playoffs',
-        'basketball', 'nba', 'baseball', 'mlb', 'hockey', 'nhl',
-        'tennis', 'golf', 'cricket', 'rugby', 'nba draft',
-        'auburn', 'alabama', 'clemson', 'ohio state', 'college football',
-        'ncaa', 'sec football', 'acc football', 'big ten', 'football coach',
-        'touchdown', 'nfl season', 'nfl game', 'college sports',
-        'georgia football', 'texas football', 'florida football', 'lsu football',
-        'michigan football', 'notre dame', 'penn state', 'florida state',
-        'athletic director', 'coach hire', 'recruiting', 'transfer portal',
-        'radiohead', 'music', 'concert', 'band', 'album', 'song'
-      ];
+      // Include if it mentions soccer/football keywords
+      const hasSoccerKeywords = /soccer|football|champions league|premier league|la liga|serie a|bundesliga|ligue 1|world cup|euro|copa america|fifa|uefa|conmebol|caf|international football|national team|nations league/i.test(title + ' ' + desc);
       
-      for (const keyword of excludeKeywords) {
-        if (content.includes(keyword)) {
-          return false;
-        }
-      }
+      // Exclude if it mentions American football
+      const hasAmericanFootballKeywords = /nfl|american football|college football|auburn|alabama|clemson|ohio state|texas|georgia|michigan|lsu|oklahoma|notre dame|ncaa|super bowl|nfl draft|quarterback|nfl team|football coach|football game|football season|football player|football league|football championship/i.test(title + ' ' + desc);
       
-      // Include if it has FIFA/international competition keywords
-      const fifaKeywords = ['fifa', 'world cup', 'euro', 'copa america', 'international football',
-                            'national team', 'confederation', 'concacaf', 'conmebol', 'uefa', 'afc', 'caf',
-                            'african cup', 'asian cup', 'gold cup', 'nations league',
-                            'qualifying', 'tournament', 'championship', 'international match', 'friendly match'];
-      
-      // Check for FIFA/international keywords
-      const hasFIFAKeyword = fifaKeywords.some(keyword => content.includes(keyword));
-      
-      // If it has FIFA/international keywords, include it
-      if (hasFIFAKeyword) {
-        return true;
-      }
-      
-      // Otherwise exclude
-      return false;
+      return hasSoccerKeywords && !hasAmericanFootballKeywords;
     });
     
-      return filtered.slice(0, 15);
+    return filtered.slice(0, 15);
   } catch (error) {
     console.error('Failed to fetch football news:', error);
     return [];
@@ -206,21 +176,27 @@ function getWeatherDescription(code: number): string {
   return descriptions[code] || 'Unknown';
 }
 
-
 /**
- * Fetch live matches and upcoming fixtures from major international leagues
+ * Fetch live matches and upcoming fixtures from Football-Data.org
  * Includes: Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League
  */
 export async function fetchLiveMatchesAndFixtures() {
+  const FOOTBALL_DATA_API_KEY = process.env.FOOTBALL_DATA_API_KEY;
+  
+  if (!FOOTBALL_DATA_API_KEY) {
+    console.warn('FOOTBALL_DATA_API_KEY not set');
+    return [];
+  }
+
   try {
-    // League IDs for API-Football (free tier supports these)
+    // League codes for Football-Data.org
     const leagues = [
-      { id: 39, name: 'Premier League', country: 'England' },
-      { id: 140, name: 'La Liga', country: 'Spain' },
-      { id: 135, name: 'Serie A', country: 'Italy' },
-      { id: 78, name: 'Bundesliga', country: 'Germany' },
-      { id: 61, name: 'Ligue 1', country: 'France' },
-      { id: 2, name: 'Champions League', country: 'International' }
+      { code: 'PL', name: 'Premier League', country: 'England' },
+      { code: 'LA', name: 'La Liga', country: 'Spain' },
+      { code: 'SA', name: 'Serie A', country: 'Italy' },
+      { code: 'BL1', name: 'Bundesliga', country: 'Germany' },
+      { code: 'FL1', name: 'Ligue 1', country: 'France' },
+      { code: 'CL', name: 'Champions League', country: 'International' }
     ];
 
     const allMatches: any[] = [];
@@ -228,12 +204,12 @@ export async function fetchLiveMatchesAndFixtures() {
     // Fetch matches for each league
     for (const league of leagues) {
       try {
-        // Get today's and upcoming matches
+        // Get matches from Football-Data.org
         const response = await fetch(
-          `https://api.api-football.com/v3/fixtures?league=${league.id}&season=2024&status=LIVE,NS,PST&next=20`,
+          `https://api.football-data.org/v4/competitions/${league.code}/matches?status=LIVE,SCHEDULED,FINISHED`,
           {
             headers: {
-              'x-apisports-key': 'demo' // Demo key - limited requests
+              'X-Auth-Token': FOOTBALL_DATA_API_KEY
             }
           }
         );
@@ -245,21 +221,49 @@ export async function fetchLiveMatchesAndFixtures() {
 
         const data = await response.json();
 
-        if (data.response && Array.isArray(data.response)) {
-          const matches = data.response.map((match: any) => ({
-            matchId: `${match.fixture.id}`,
-            homeTeam: match.teams.home.name,
-            awayTeam: match.teams.away.name,
-            homeScore: match.goals.home,
-            awayScore: match.goals.away,
-            league: league.name,
-            leagueCountry: league.country,
-            matchDate: new Date(match.fixture.date),
-            status: match.fixture.status.short === 'LIVE' ? 'live' : 
-                   match.fixture.status.short === 'NS' ? 'scheduled' : 'finished',
-            homeTeamLogo: match.teams.home.logo,
-            awayTeamLogo: match.teams.away.logo,
-          }));
+        if (data.matches && Array.isArray(data.matches)) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          const matches = data.matches
+            .filter((match: any) => {
+              const matchDate = new Date(match.utcDate);
+              
+              // Include live matches
+              if (match.status === 'LIVE') return true;
+              
+              // Include scheduled matches within next 30 days
+              if (match.status === 'SCHEDULED') {
+                const thirtyDaysFromNow = new Date(today);
+                thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+                return matchDate >= today && matchDate <= thirtyDaysFromNow;
+              }
+              
+              // Include finished matches from last 7 days
+              if (match.status === 'FINISHED') {
+                const sevenDaysAgo = new Date(today);
+                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                return matchDate >= sevenDaysAgo && matchDate <= today;
+              }
+              
+              return false;
+            })
+            .sort((a: any, b: any) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime())
+            .slice(0, 10)
+            .map((match: any) => ({
+              matchId: `${match.id}`,
+              homeTeam: match.homeTeam.name,
+              awayTeam: match.awayTeam.name,
+              homeScore: match.score.fullTime.home,
+              awayScore: match.score.fullTime.away,
+              league: league.name,
+              leagueCountry: league.country,
+              matchDate: new Date(match.utcDate),
+              status: match.status === 'LIVE' ? 'live' : 
+                     match.status === 'SCHEDULED' ? 'scheduled' : 'finished',
+              homeTeamLogo: match.homeTeam.crest || null,
+              awayTeamLogo: match.awayTeam.crest || null,
+            }));
 
           allMatches.push(...matches);
         }

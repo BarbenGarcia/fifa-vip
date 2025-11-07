@@ -65,5 +65,12 @@
 - [x] Style widgets with FIFA branding (blue and gold)
 - [x] Add match details: teams, scores, league, time, status
 - [x] Test all match data integration
-- [ ] Note: API-Football requires paid subscription for full access (demo key has limitations)
+
+## Phase 8: Replace with Football-Data.org API
+- [x] Update services.ts to use Football-Data.org API instead of API-Football
+- [x] Add Football-Data.org token to environment variables
+- [x] Test live match data fetching from Football-Data.org
+- [x] Implement filtering for live, scheduled, and finished matches
+- [x] Test auto-refresh functionality
+- [x] Widget displays match data with team logos, scores, and status
 
