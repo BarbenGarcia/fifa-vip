@@ -181,10 +181,10 @@ function getWeatherDescription(code: number): string {
  * Includes: Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League
  */
 export async function fetchLiveMatchesAndFixtures() {
-  const FOOTBALL_DATA_API_KEY = process.env.FOOTBALL_DATA_API_KEY;
+  const FOOTBALL_DATA_API_KEY = process.env.FOOTBALL_DATA_API_KEY || process.env.VITE_FOOTBALL_DATA_API_KEY;
   
   if (!FOOTBALL_DATA_API_KEY) {
-    console.warn('FOOTBALL_DATA_API_KEY not set');
+    console.warn('FOOTBALL_DATA_API_KEY not set. Please add your Football-Data.org token.');
     return [];
   }
 
@@ -239,11 +239,11 @@ export async function fetchLiveMatchesAndFixtures() {
                 return matchDate >= today && matchDate <= thirtyDaysFromNow;
               }
               
-              // Include finished matches from last 7 days
+              // Include finished matches from last 14 days
               if (match.status === 'FINISHED') {
-                const sevenDaysAgo = new Date(today);
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                return matchDate >= sevenDaysAgo && matchDate <= today;
+                const fourteenDaysAgo = new Date(today);
+                fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+                return matchDate >= fourteenDaysAgo && matchDate <= today;
               }
               
               return false;

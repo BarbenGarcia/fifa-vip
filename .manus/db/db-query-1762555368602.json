@@ -1,0 +1,14 @@
+{
+  "query": "SELECT COUNT(*) as total, MAX(fetchedAt) as lastFetch FROM matchesCache;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user D8xy9zs3WeZdaVM.root --database ETsesv5EwB38rbcGT4RK8T --execute SELECT COUNT(*) as total, MAX(fetchedAt) as lastFetch FROM matchesCache;",
+  "rows": [
+    {
+      "total": "0",
+      "lastFetch": "NULL"
+    }
+  ],
+  "messages": [],
+  "stdout": "total\tlastFetch\n0\tNULL\n",
+  "stderr": "",
+  "execution_time_ms": 383
+}
