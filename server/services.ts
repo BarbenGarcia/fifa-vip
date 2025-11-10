@@ -6,8 +6,54 @@ export async function fetchLiveMatchesAndFixtures() {
   const FOOTBALL_DATA_API_KEY = process.env.FOOTBALL_DATA_API_KEY || process.env.VITE_FOOTBALL_DATA_API_KEY;
   
   if (!FOOTBALL_DATA_API_KEY) {
-    console.warn('FOOTBALL_DATA_API_KEY not set. Please add your Football-Data.org token.');
-    return [];
+    console.warn('FOOTBALL_DATA_API_KEY not set. Returning mock matches for UI.');
+
+    // Return a small set of mock matches so the UI shows content while no API key is present.
+    const now = new Date();
+    const addMinutes = (m: number) => new Date(now.getTime() + m * 60000).toISOString();
+    const mockMatches = [
+      {
+        matchId: 'mock-1',
+        homeTeam: 'FC Zurich',
+        awayTeam: 'Grasshoppers',
+        homeScore: null,
+        awayScore: null,
+        league: 'Swiss Super League',
+        leagueCountry: 'Switzerland',
+        matchDate: addMinutes(60),
+        status: 'scheduled',
+        homeTeamLogo: null,
+        awayTeamLogo: null,
+      },
+      {
+        matchId: 'mock-2',
+        homeTeam: 'Real Madrid',
+        awayTeam: 'FC Barcelona',
+        homeScore: 2,
+        awayScore: 1,
+        league: 'La Liga',
+        leagueCountry: 'Spain',
+        matchDate: addMinutes(-30),
+        status: 'live',
+        homeTeamLogo: null,
+        awayTeamLogo: null,
+      },
+      {
+        matchId: 'mock-3',
+        homeTeam: 'Manchester United',
+        awayTeam: 'Liverpool',
+        homeScore: 1,
+        awayScore: 3,
+        league: 'Premier League',
+        leagueCountry: 'England',
+        matchDate: addMinutes(-180),
+        status: 'finished',
+        homeTeamLogo: null,
+        awayTeamLogo: null,
+      },
+    ];
+
+    return mockMatches;
   }
 
   try {
@@ -44,13 +90,13 @@ export async function fetchLiveMatchesAndFixtures() {
           const matches = data.matches
             .filter((match: any) => {
               const matchDate = new Date(match.utcDate);
-              const sixtyDaysAgo = new Date(now);
-              sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-              const sixtyDaysFromNow = new Date(now);
-              sixtyDaysFromNow.setDate(sixtyDaysFromNow.getDate() + 60);
+              const sevenDaysAgo = new Date(now);
+              sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+              const thirtyDaysFromNow = new Date(now);
+              thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
               
-              // Include all matches within 60 days (past and future)
-              return matchDate >= sixtyDaysAgo && matchDate <= sixtyDaysFromNow;
+              // Include matches from last 7 days and next 30 days (recent + upcoming)
+              return matchDate >= sevenDaysAgo && matchDate <= thirtyDaysFromNow;
             })
             .sort((a: any, b: any) => {
               // Sort by status: SCHEDULED > LIVE > FINISHED
@@ -146,6 +192,36 @@ export async function fetchZurichWeather() {
   } catch (error) {
     console.error('Failed to fetch weather:', error);
     return null;
+  }
+}
+
+/**
+ * Fetch next 3 days forecast for Zurich (daily min/max + weather code)
+ */
+export async function fetchZurichForecast() {
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude=47.3769&longitude=8.5472&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7';
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn('Failed to fetch Zurich forecast');
+      return [] as Array<{ date: string; weatherCode: number; tMax: number; tMin: number }>;
+    }
+    const data = await response.json();
+    const daily = data.daily || {};
+    const result: Array<{ date: string; weatherCode: number; tMax: number; tMin: number }> = [];
+    const len = Math.min(7, (daily.time?.length || 0));
+    for (let i = 0; i < len; i++) {
+      result.push({
+        date: daily.time[i],
+        weatherCode: daily.weather_code?.[i] ?? 0,
+        tMax: daily.temperature_2m_max?.[i] ?? null,
+        tMin: daily.temperature_2m_min?.[i] ?? null,
+      });
+    }
+    return result;
+  } catch (error) {
+    console.error('Failed to fetch forecast:', error);
+    return [];
   }
 }
 

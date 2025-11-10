@@ -1,0 +1,30 @@
+version: "3.9"
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: example-root
+      MARIADB_DATABASE: fifavip
+      MARIADB_USER: fifavip
+      MARIADB_PASSWORD: example-pass
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-pexample-root"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: mysql://fifavip:example-pass@db:3306/fifavip
+      NEWS_API_KEY: change_me
+      FOOTBALL_DATA_API_KEY: change_me
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    restart: unless-stopped

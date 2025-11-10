@@ -3,7 +3,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { getWorldNews, getFootballNews, getZurichWeather, getLiveMatches } from "./db";
-import { fetchMatchResults } from "./services";
+import { fetchMatchResults, fetchZurichForecast } from "./services";
 
 export const appRouter = router({
   system: systemRouter,
@@ -29,6 +29,9 @@ export const appRouter = router({
   weather: router({
     getZurich: publicProcedure.query(async () => {
       return getZurichWeather();
+    }),
+    getZurichForecast: publicProcedure.query(async () => {
+      return fetchZurichForecast();
     }),
   }),
   matches: router({

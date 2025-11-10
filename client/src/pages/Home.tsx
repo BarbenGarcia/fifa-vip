@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Cloud, Newspaper, Trophy, Zap } from 'lucide-react';
+import { RefreshCw, Cloud, Newspaper, Trophy, Zap, Sun, CloudRain, CloudSnow, CloudLightning, CloudFog } from 'lucide-react';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip } from 'recharts';
 import { APP_LOGO, APP_TITLE } from '@/const';
 
 interface NewsArticle {
@@ -52,8 +53,27 @@ export default function Home() {
   const worldNews = trpc.news.getWorld.useQuery();
   const footballNews = trpc.news.getFootball.useQuery();
   const weather = trpc.weather.getZurich.useQuery();
+  const forecast = trpc.weather.getZurichForecast.useQuery();
   const matches = trpc.matches.getRecent.useQuery();
   const liveMatches = trpc.matches.getLive.useQuery();
+
+  // Weather code mapping → label, icon, severity
+  const getWeatherMeta = (code?: number) => {
+    const c = code ?? 0;
+    if ([0].includes(c)) return { label: 'Clear sky', Icon: Sun, severity: 'good' as const };
+    if ([1, 2, 3].includes(c)) return { label: 'Cloudy', Icon: Cloud, severity: 'good' as const };
+    if ([45, 48].includes(c)) return { label: 'Fog', Icon: CloudFog, severity: 'warn' as const };
+    if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(c)) return { label: 'Rain', Icon: CloudRain, severity: 'warn' as const };
+    if ([71, 73, 75, 77, 85, 86].includes(c)) return { label: 'Snow', Icon: CloudSnow, severity: 'warn' as const };
+    if ([95, 96, 99].includes(c)) return { label: 'Thunderstorm', Icon: CloudLightning, severity: 'bad' as const };
+    return { label: 'Unknown', Icon: Cloud, severity: 'good' as const };
+  };
+
+  const severityBg = (severity: 'good' | 'warn' | 'bad') => {
+    if (severity === 'good') return 'rgba(34,197,94,0.12)';
+    if (severity === 'warn') return 'rgba(234,179,8,0.15)';
+    return 'rgba(239,68,68,0.15)';
+  };
 
   // Update time every second
   useEffect(() => {
@@ -68,6 +88,7 @@ export default function Home() {
       worldNews.refetch(),
       footballNews.refetch(),
       weather.refetch(),
+      forecast.refetch(),
       matches.refetch(),
       liveMatches.refetch(),
     ]);
@@ -123,39 +144,121 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Weather Widget */}
+        {/* Weather Current + 5-Day Forecast */}
         <div className="mb-12">
-          <Card className="border-4 shadow-lg" style={{ backgroundColor: 'rgba(0, 61, 165, 0.2)', borderColor: fifaGold }}>
+          <Card className="border-4 shadow-lg" style={{ backgroundColor: 'rgba(0, 61, 165, 0.18)', borderColor: fifaGold }}>
             <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-3xl font-bold">
-                <Cloud className="w-8 h-8" style={{ color: fifaGold }} />
-                Zurich Weather
+              <CardTitle className="flex items-center gap-3 text-2xl font-bold">
+                <Cloud className="w-7 h-7" style={{ color: fifaGold }} />
+                Zurich Weather & 7-Day Forecast
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
               {weather.isLoading ? (
                 <div className="text-xl text-gray-300">Loading weather data...</div>
               ) : weatherData ? (
-                <div className="grid grid-cols-4 gap-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   <div>
-                    <p className="text-lg text-gray-300 mb-2">Temperature</p>
-                    <p className="text-5xl font-bold text-white">{weatherData.temperature}°C</p>
+                    <p className="text-sm text-gray-300 mb-1">Temperature</p>
+                    <p className="text-4xl font-bold text-white">{weatherData.temperature}°C</p>
                   </div>
                   <div>
-                    <p className="text-lg text-gray-300 mb-2">Condition</p>
-                    <p className="text-4xl font-bold text-white">{weatherData.description || 'N/A'}</p>
+                    <p className="text-sm text-gray-300 mb-1">Condition</p>
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const { Icon } = getWeatherMeta(weatherData.weatherCode ?? undefined);
+                        return <Icon className="w-6 h-6" style={{ color: fifaGold }} />;
+                      })()}
+                      <p className="text-2xl font-bold text-white">{weatherData.description || 'N/A'}</p>
+                    </div>
                   </div>
                   <div>
-                    <p className="text-lg text-gray-300 mb-2">Wind Speed</p>
-                    <p className="text-4xl font-bold text-white">{weatherData.windSpeed} km/h</p>
+                    <p className="text-sm text-gray-300 mb-1">Wind</p>
+                    <p className="text-2xl font-bold text-white">{weatherData.windSpeed} km/h</p>
                   </div>
                   <div>
-                    <p className="text-lg text-gray-300 mb-2">Humidity</p>
-                    <p className="text-4xl font-bold text-white">{weatherData.humidity}%</p>
+                    <p className="text-sm text-gray-300 mb-1">Humidity</p>
+                    <p className="text-2xl font-bold text-white">{weatherData.humidity}%</p>
                   </div>
                 </div>
               ) : (
                 <div className="text-xl text-gray-300">Unable to load weather data</div>
+              )}
+              {forecast.isLoading ? (
+                <div className="text-lg text-gray-300">Loading forecast...</div>
+              ) : (forecast.data || []).length > 0 ? (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
+                    {(forecast.data as any[]).map((d: any) => {
+                      const meta = getWeatherMeta(d.weatherCode);
+                      return (
+                        <div key={d.date} className="p-3 rounded-lg text-center" style={{ backgroundColor: severityBg(meta.severity) }}>
+                          <div className="text-[10px] text-gray-300 mb-1">
+                            {new Date(d.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </div>
+                          <div className="flex items-center justify-center gap-1 mb-1">
+                            <meta.Icon className="w-4 h-4" style={{ color: fifaGold }} />
+                            <span className="text-[10px] text-gray-200">{meta.label}</span>
+                          </div>
+                          <div className="text-lg font-bold text-white mb-1">
+                            {Math.round(d.tMax)}° / <span className="text-gray-300 text-sm">{Math.round(d.tMin)}°</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Temperature trend chart */}
+                  <div className="mt-6 p-4 rounded-lg" style={{ backgroundColor: 'rgba(255, 215, 0, 0.05)' }}>
+                    <div className="text-sm font-semibold text-gray-200 mb-3 flex items-center gap-2">
+                      <span style={{ color: fifaGold }}>📈</span> 7-Day Max Temperature Trend
+                    </div>
+                    <div style={{ width: '100%', height: 120 }}>
+                      <ResponsiveContainer>
+                        <AreaChart
+                          data={(forecast.data as any[]).map((d: any) => ({
+                            day: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
+                            temp: Math.round(d.tMax),
+                          }))}
+                          margin={{ left: 10, right: 10, top: 10, bottom: 5 }}
+                        >
+                          <defs>
+                            <linearGradient id="tempGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={fifaGold} stopOpacity={0.4} />
+                              <stop offset="95%" stopColor={fifaGold} stopOpacity={0.05} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                          <XAxis dataKey="day" stroke="#9ca3af" style={{ fontSize: 11 }} />
+                          <YAxis stroke="#9ca3af" style={{ fontSize: 11 }} domain={['dataMin - 2', 'dataMax + 2']} />
+                          <ReTooltip
+                            cursor={{ fill: 'rgba(255,215,0,0.1)' }}
+                            contentStyle={{
+                              background: 'rgba(0, 61, 165, 0.95)',
+                              border: `2px solid ${fifaGold}`,
+                              borderRadius: 8,
+                              color: '#fff',
+                              fontSize: 13,
+                            }}
+                            labelStyle={{ color: fifaGold, fontWeight: 'bold' }}
+                            formatter={(value: any) => [`${value}°C`, 'Max Temp']}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="temp"
+                            stroke={fifaGold}
+                            strokeWidth={3}
+                            fill="url(#tempGradient)"
+                            dot={{ r: 4, fill: fifaGold, stroke: fifaBlue, strokeWidth: 2 }}
+                            activeDot={{ r: 6, fill: fifaGold }}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-lg text-gray-300">No forecast available</div>
               )}
             </CardContent>
           </Card>

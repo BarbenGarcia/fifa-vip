@@ -1,15 +1,30 @@
 import { eq, desc } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { InsertUser, users, newsCache, weatherCache, matchesCache, InsertMatchesCache } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+// In-memory cache when database is not available
+let memoryCache: {
+  worldNews: any[];
+  footballNews: any[];
+  weather: any;
+  matches: any[];
+} = {
+  worldNews: [],
+  footballNews: [],
+  weather: null,
+  matches: [],
+};
+
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const client = postgres(process.env.DATABASE_URL);
+      _db = drizzle(client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -68,7 +83,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    // PostgreSQL uses onConflictDoUpdate instead of onDuplicateKeyUpdate
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -94,7 +111,10 @@ export async function getUserByOpenId(openId: string) {
  */
 export async function getWorldNews(limit = 10) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) {
+    // Return from memory cache
+    return memoryCache.worldNews.slice(0, limit);
+  }
   
   const result = await db
     .select()
@@ -111,7 +131,10 @@ export async function getWorldNews(limit = 10) {
  */
 export async function getFootballNews(limit = 10) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) {
+    // Return from memory cache
+    return memoryCache.footballNews.slice(0, limit);
+  }
   
   const result = await db
     .select()
@@ -128,7 +151,10 @@ export async function getFootballNews(limit = 10) {
  */
 export async function getZurichWeather() {
   const db = await getDb();
-  if (!db) return null;
+  if (!db) {
+    // Return from memory cache
+    return memoryCache.weather;
+  }
   
   const result = await db
     .select()
@@ -145,23 +171,43 @@ export async function getZurichWeather() {
  */
 export async function updateNewsCache(category: string, articles: any[]) {
   const db = await getDb();
-  if (!db) return;
+  
+  // Store in memory cache regardless of database
+  const formattedArticles = articles.map((article, index) => ({
+    id: index + 1,
+    category,
+    title: article.title,
+    description: article.description,
+    url: article.url,
+    imageUrl: article.urlToImage || article.image,
+    source: article.source?.name || article.source,
+    publishedAt: new Date(article.publishedAt),
+    fetchedAt: new Date(),
+    createdAt: new Date(),
+  }));
+  
+  if (category === 'world') {
+    memoryCache.worldNews = formattedArticles;
+  } else if (category === 'football') {
+    memoryCache.footballNews = formattedArticles;
+  }
+  
+  if (!db) {
+    console.log(`[Memory Cache] Updated ${category} news: ${articles.length} articles`);
+    return;
+  }
   
   try {
     // Delete old articles for this category
     await db.delete(newsCache).where(eq(newsCache.category, category));
     
     // Insert new articles
-    for (const article of articles) {
-      await db.insert(newsCache).values({
-        category,
-        title: article.title,
-        description: article.description,
-        url: article.url,
-        imageUrl: article.urlToImage || article.image,
-        source: article.source?.name || article.source,
-        publishedAt: new Date(article.publishedAt),
-      });
+    for (const article of formattedArticles) {
+      // Remove `id` so DB uses auto-increment primary key
+      // (memory cache uses `id` for in-memory lists)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, ...articleForDb } = article as any;
+      await db.insert(newsCache).values(articleForDb);
     }
   } catch (error) {
     console.error('[Database] Failed to update news cache:', error);
@@ -173,21 +219,31 @@ export async function updateNewsCache(category: string, articles: any[]) {
  */
 export async function updateWeatherCache(weatherData: any) {
   const db = await getDb();
-  if (!db) return;
+  
+  // Store in memory cache
+  memoryCache.weather = {
+    id: 1,
+    location: 'zurich',
+    temperature: String(weatherData.temperature),
+    weatherCode: weatherData.weatherCode,
+    windSpeed: String(weatherData.windSpeed),
+    humidity: String(weatherData.humidity),
+    description: weatherData.description,
+    fetchedAt: new Date(),
+    createdAt: new Date(),
+  };
+  
+  if (!db) {
+    console.log('[Memory Cache] Updated Zurich weather');
+    return;
+  }
   
   try {
     // Delete old weather for Zurich
     await db.delete(weatherCache).where(eq(weatherCache.location, 'zurich'));
     
     // Insert new weather
-    await db.insert(weatherCache).values({
-      location: 'zurich',
-      temperature: weatherData.temperature,
-      weatherCode: weatherData.weatherCode,
-      windSpeed: weatherData.windSpeed,
-      humidity: weatherData.humidity,
-      description: weatherData.description,
-    });
+    await db.insert(weatherCache).values(memoryCache.weather);
   } catch (error) {
     console.error('[Database] Failed to update weather cache:', error);
   }
@@ -199,12 +255,16 @@ export async function updateWeatherCache(weatherData: any) {
  */
 export async function getLiveMatches(limit = 20) {
   const db = await getDb();
-  if (!db) return [];
+  if (!db) {
+    // Return from memory cache
+    return memoryCache.matches.slice(0, limit);
+  }
   
+  // Sort by date descending to show most recent matches first
   const result = await db
     .select()
     .from(matchesCache)
-    .orderBy((t) => t.matchDate)
+    .orderBy((t) => desc(t.matchDate))
     .limit(limit);
   
   return result;
@@ -215,7 +275,29 @@ export async function getLiveMatches(limit = 20) {
  */
 export async function updateMatchesCache(matches: any[]) {
   const db = await getDb();
-  if (!db) return;
+  
+  // Store in memory cache
+  memoryCache.matches = matches.map((match, index) => ({
+    id: index + 1,
+    matchId: match.matchId,
+    homeTeam: match.homeTeam,
+    awayTeam: match.awayTeam,
+    homeScore: match.homeScore,
+    awayScore: match.awayScore,
+    league: match.league,
+    leagueCountry: match.leagueCountry,
+    matchDate: match.matchDate,
+    status: match.status,
+    homeTeamLogo: match.homeTeamLogo,
+    awayTeamLogo: match.awayTeamLogo,
+    fetchedAt: new Date(),
+    createdAt: new Date(),
+  }));
+  
+  if (!db) {
+    console.log(`[Memory Cache] Updated matches: ${matches.length} matches`);
+    return;
+  }
   
   try {
     // Delete old matches (older than 7 days)
@@ -237,7 +319,9 @@ export async function updateMatchesCache(matches: any[]) {
         awayTeamLogo: match.awayTeamLogo,
       };
       
-      await db.insert(matchesCache).values(values).onDuplicateKeyUpdate({
+      // PostgreSQL uses onConflictDoUpdate
+      await db.insert(matchesCache).values(values).onConflictDoUpdate({
+        target: matchesCache.matchId,
         set: {
           homeScore: match.homeScore,
           awayScore: match.awayScore,

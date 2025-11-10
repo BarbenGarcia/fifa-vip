@@ -1,24 +1,27 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { integer, pgEnum, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
 /**
  * Core user table backing auth flow.
  * Extend this file with additional tables as your product grows.
  * Columns use camelCase to match both database fields and generated types.
  */
-export const users = mysqlTable("users", {
+
+export const roleEnum = pgEnum("role", ["user", "admin"]);
+
+export const users = pgTable("users", {
   /**
    * Surrogate primary key. Auto-incremented numeric value managed by the database.
    * Use this for relations between tables.
    */
-  id: int("id").autoincrement().primaryKey(),
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: roleEnum("role").default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
@@ -28,8 +31,8 @@ export type InsertUser = typeof users.$inferInsert;
 /**
  * Cache for news articles to reduce API calls
  */
-export const newsCache = mysqlTable("newsCache", {
-  id: int("id").autoincrement().primaryKey(),
+export const newsCache = pgTable("newsCache", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   category: varchar("category", { length: 50 }).notNull(), // 'world' or 'football'
   title: text("title").notNull(),
   description: text("description"),
@@ -47,11 +50,11 @@ export type InsertNewsCache = typeof newsCache.$inferInsert;
 /**
  * Cache for weather data
  */
-export const weatherCache = mysqlTable("weatherCache", {
-  id: int("id").autoincrement().primaryKey(),
+export const weatherCache = pgTable("weatherCache", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   location: varchar("location", { length: 100 }).notNull(), // 'zurich'
   temperature: varchar("temperature", { length: 50 }),
-  weatherCode: int("weatherCode"),
+  weatherCode: integer("weatherCode"),
   windSpeed: varchar("windSpeed", { length: 50 }),
   humidity: varchar("humidity", { length: 50 }),
   description: varchar("description", { length: 255 }),
@@ -65,13 +68,13 @@ export type InsertWeatherCache = typeof weatherCache.$inferInsert;
 /**
  * Cache for live match scores and upcoming fixtures
  */
-export const matchesCache = mysqlTable("matchesCache", {
-  id: int("id").autoincrement().primaryKey(),
+export const matchesCache = pgTable("matchesCache", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   matchId: varchar("matchId", { length: 100 }).notNull().unique(), // External API match ID
   homeTeam: varchar("homeTeam", { length: 255 }).notNull(),
   awayTeam: varchar("awayTeam", { length: 255 }).notNull(),
-  homeScore: int("homeScore"),
-  awayScore: int("awayScore"),
+  homeScore: integer("homeScore"),
+  awayScore: integer("awayScore"),
   league: varchar("league", { length: 255 }).notNull(), // 'Premier League', 'La Liga', etc.
   leagueCountry: varchar("leagueCountry", { length: 100 }), // 'England', 'Spain', etc.
   matchDate: timestamp("matchDate").notNull(),

@@ -1,0 +1,11 @@
+node_modules
+dist
+drizzle/meta
+drizzle/migrations
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+*.log
+.env
+coverage
