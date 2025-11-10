@@ -57,14 +57,11 @@ export async function fetchLiveMatchesAndFixtures() {
   }
 
   try {
-    // League codes for Football-Data.org
+    // League codes for Football-Data.org (reduced to 3 to avoid rate limit)
     const leagues = [
       { code: 'PL', name: 'Premier League', country: 'England' },
-      { code: 'LA', name: 'La Liga', country: 'Spain' },
-      { code: 'SA', name: 'Serie A', country: 'Italy' },
-      { code: 'BL1', name: 'Bundesliga', country: 'Germany' },
-      { code: 'FL1', name: 'Ligue 1', country: 'France' },
       { code: 'CL', name: 'Champions League', country: 'Europe' },
+      { code: 'LA', name: 'La Liga', country: 'Spain' },
     ];
 
     const allMatches: any[] = [];
@@ -77,6 +74,15 @@ export async function fetchLiveMatchesAndFixtures() {
         });
 
         if (!response.ok) {
+          if (response.status === 404) {
+            // Some competitions may be unavailable out of season or on free tier
+            console.info(`[Matches] ${league.name} not available (404) — skipping`);
+            continue;
+          }
+          if (response.status === 429) {
+            console.info(`[Matches] Rate limited for ${league.name} (429) — will retry on next cycle`);
+            continue;
+          }
           console.warn(`Failed to fetch ${league.name} matches: ${response.status}`);
           continue;
         }
@@ -125,9 +131,12 @@ export async function fetchLiveMatchesAndFixtures() {
           allMatches.push(...matches);
         }
       } catch (error) {
-        console.warn(`Error fetching matches:`, error);
+        console.error(`Error fetching ${league.name} matches:`, error);
         continue;
       }
+      
+      // Add 7-second delay between leagues to respect 10 requests/minute rate limit
+      await new Promise(resolve => setTimeout(resolve, 7000));
     }
 
     return allMatches;

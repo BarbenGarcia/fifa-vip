@@ -15,17 +15,17 @@ let matchesRefreshInterval: NodeJS.Timeout | null = null;
 export function startBackgroundJobs() {
   console.log('[Jobs] Starting background data refresh jobs...');
   
-  // Refresh news every 5 minutes
+  // Refresh news every 20 minutes (NewsAPI: 100 req/day = ~4 req/hour max = 2 news types * 3/hour)
   refreshNews();
-  newsRefreshInterval = setInterval(refreshNews, 5 * 60 * 1000);
+  newsRefreshInterval = setInterval(refreshNews, 20 * 60 * 1000);
   
-  // Refresh weather every 15 minutes
+  // Refresh weather every 30 minutes (Open-Meteo is generous: 10k/day)
   refreshWeather();
-  weatherRefreshInterval = setInterval(refreshWeather, 15 * 60 * 1000);
+  weatherRefreshInterval = setInterval(refreshWeather, 30 * 60 * 1000);
   
-  // Refresh matches every 5 minutes
+  // Refresh matches every 10 minutes (Football-Data: 10 req/min limit, need spacing)
   refreshMatches();
-  matchesRefreshInterval = setInterval(refreshMatches, 5 * 60 * 1000);
+  matchesRefreshInterval = setInterval(refreshMatches, 10 * 60 * 1000);
 }
 
 /**
