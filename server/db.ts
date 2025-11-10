@@ -1,6 +1,7 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import dns from "node:dns/promises";
 import { InsertUser, users, newsCache, weatherCache, matchesCache, InsertMatchesCache } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -21,16 +22,57 @@ let memoryCache: {
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      const client = postgres(process.env.DATABASE_URL);
-      _db = drizzle(client);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
+  if (_db) return _db;
+  const raw = process.env.DATABASE_URL;
+  if (!raw) return null;
+  
+  // If we already tried and failed, don't retry every time
+  if (_db === null) return null;
+  
+  // Parse connection string to override host with IPv4 if needed
+  try {
+    const url = new URL(raw);
+    let host = url.hostname;
+    if (process.env.FORCE_IPV4 === '1') {
+      try {
+        const result = await dns.lookup(host, { family: 4 });
+        host = result.address;
+        console.log(`[Database] Using IPv4 address for ${url.hostname}: ${host}`);
+      } catch (e) {
+        console.warn('[Database] IPv4 resolution failed, will use memory cache');
+        _db = null as any;
+        return null;
+      }
     }
+    const client = postgres({
+      host,
+      port: Number(url.port || 5432),
+      database: url.pathname.slice(1),
+      username: url.username,
+      password: url.password,
+      ssl: 'require',
+      max: 3,
+      idle_timeout: 20,
+      connect_timeout: 10,
+    });
+    // Quick connectivity probe to avoid returning a half-connected client
+    try {
+      // postgres-js tagged template to run a simple query
+      // @ts-ignore - template invocation style
+      await client`select 1`;
+    } catch (probeErr) {
+      console.warn('[Database] Connectivity probe failed, using memory cache');
+      try { await client.end({ timeout: 1 }); } catch {}
+      _db = null as any;
+      return null;
+    }
+    _db = drizzle(client);
+    return _db;
+  } catch (err) {
+    console.warn('[Database] Connection failed, using memory cache only');
+    _db = null as any;
+    return null;
   }
-  return _db;
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
