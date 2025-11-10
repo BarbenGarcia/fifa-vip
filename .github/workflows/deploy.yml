@@ -18,9 +18,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
       - name: Enable Corepack
         run: corepack enable
+      - name: Setup pnpm cache
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
       - name: Install deps (no scripts)
         run: pnpm install --frozen-lockfile
       - name: Type Check
