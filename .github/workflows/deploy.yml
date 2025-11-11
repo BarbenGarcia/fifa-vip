@@ -36,11 +36,12 @@ jobs:
         run: pnpm test || echo "Tests failed or none exist; continuing"
       
       - name: Build Docker image
-        run: |
-          IMAGE="ghcr.io/${{ github.repository_owner }}/fifa-vip:latest"
-          IMAGE=$(echo "$IMAGE" | awk '{print tolower($0)}')
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
-          docker build -t "$IMAGE" .
+        run: docker build -t ghcr.io/barbengarcia/fifa-vip:latest .
+        env:
+          IMAGE: ghcr.io/barbengarcia/fifa-vip:latest
+      
+      - name: Set IMAGE env
+        run: echo "IMAGE=ghcr.io/barbengarcia/fifa-vip:latest" >> $GITHUB_ENV
       
       - name: Login to GHCR
         uses: docker/login-action@v3
