@@ -263,6 +263,33 @@ Si `pnpm db:push` falla:
 - Whitelist la IP de Render en Supabase (no necesario en plan Free)
 - Verifica que `DATABASE_URL` esté configurada correctamente en Render Environment Variables
 
+### ENETUNREACH / ENOTFOUND al conectar a `db.<project_ref>.supabase.co`
+Cuando ves errores como:
+```
+connect ENETUNREACH 2a05:....:5432
+getaddrinfo ENOTFOUND db.<project_ref>.supabase.co
+```
+Tu entorno intenta usar IPv6 pero no tiene ruta válida o la resolución DNS falla.
+
+Soluciones rápidas:
+1. Variable de entorno: `FORCE_IPV4=1` (ya soportado en `server/db.ts`).
+2. Asegura orden IPv4 primero dentro de Node (`dns.setDefaultResultOrder('ipv4first')` ya aplicado en `_core/index.ts`).
+3. Testea resolución:
+   ```bash
+   dig +short db.<project_ref>.supabase.co A
+   dig +short db.<project_ref>.supabase.co AAAA
+   getent hosts db.<project_ref>.supabase.co
+   ```
+4. Si solo hay registro AAAA y tu red no soporta IPv6 → usa otra red o VPN.
+5. Edita `/etc/gai.conf` y descomenta:
+   `precedence ::ffff:0:0/96 100`
+   Luego reinicia el servidor Node.
+6. Verifica salida:
+   ```bash
+   nc -vz db.<project_ref>.supabase.co 5432
+   ```
+7. Mientras tanto el dashboard seguirá funcionando con cache en memoria (sin persistencia) si la DB no conecta.
+
 ---
 
 ## 🚀 Despliegue Automático

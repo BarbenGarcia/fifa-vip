@@ -37,10 +37,14 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
+// Support external backend domain when hosting frontend separately (e.g., Firebase Hosting)
+const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || (globalThis as any).VITE_API_BASE_URL || '';
+const trpcEndpoint = (API_BASE ? API_BASE.replace(/\/$/, '') : '') + '/api/trpc';
+
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: "/api/trpc",
+      url: trpcEndpoint,
       transformer: superjson,
       fetch(input, init) {
         return globalThis.fetch(input, {

@@ -201,7 +201,12 @@ class SDKServer {
     cookieValue: string | undefined | null
   ): Promise<{ openId: string; appId: string; name: string } | null> {
     if (!cookieValue) {
-      console.warn("[Auth] Missing session cookie");
+      // reduce log noise: only log once per minute
+      const now = Date.now();
+      if (!((globalThis as any)._lastMissingCookieLog) || now - (globalThis as any)._lastMissingCookieLog > 60000) {
+        console.warn("[Auth] Missing session cookie");
+        (globalThis as any)._lastMissingCookieLog = now;
+      }
       return null;
     }
 
@@ -227,7 +232,11 @@ class SDKServer {
         name,
       };
     } catch (error) {
-      console.warn("[Auth] Session verification failed", String(error));
+      const now = Date.now();
+      if (!((globalThis as any)._lastSessionFailLog) || now - (globalThis as any)._lastSessionFailLog > 60000) {
+        console.warn("[Auth] Session verification failed", String(error));
+        (globalThis as any)._lastSessionFailLog = now;
+      }
       return null;
     }
   }

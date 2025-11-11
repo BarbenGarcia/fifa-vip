@@ -85,7 +85,43 @@ docker compose up -d --build
 
 ---
 
-## 🆘 Problemas Comunes
+## � Hosting estático (Firebase, Netlify, GitHub Pages)
+
+Si hospedas SOLO el frontend en un dominio diferente al backend (por ejemplo, Firebase Hosting) necesitas indicar a la app dónde está el backend.
+
+### Variable: VITE_API_BASE_URL
+
+- Qué es: La URL base de tu backend (donde corre Express + tRPC)
+- Dónde se usa: En el cliente para construir el endpoint de tRPC
+- Formato esperado: `https://tu-backend.com` (sin `/api` al final)
+
+### Cómo configurarlo
+
+1) En desarrollo local (para probar contra un backend remoto):
+
+```bash
+VITE_API_BASE_URL="https://tu-backend.com" pnpm dev
+```
+
+2) En build para producción (variables Vite se inyectan en compile-time):
+
+```bash
+export VITE_API_BASE_URL="https://tu-backend.com"
+pnpm build
+```
+
+3) En Firebase Hosting:
+
+- Crea un archivo `.env` o usa `firebase.json` con `rewrites` si proxéas, o define la variable en tu CI/CD antes de `pnpm build`.
+- También puedes definir `VITE_API_BASE_URL` como variable pública en tu plataforma, si soporta inyección durante el build.
+
+La app usará: `${VITE_API_BASE_URL}/api/trpc`.
+
+Si no defines nada, usará relativo: `/api/trpc` (ideal cuando frontend y backend están en el mismo host).
+
+---
+
+## �🆘 Problemas Comunes
 
 ### "Cannot connect to database"
 → Verifica que `DATABASE_URL` esté correcta y tenga la contraseña
