@@ -14,35 +14,43 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Node (for potential lint/test)
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Enable Corepack
-        run: corepack enable
-      - name: Setup pnpm cache
+      
+      - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
           version: 10
-      - name: Install deps (no scripts)
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      
+      - name: Install deps
         run: pnpm install --frozen-lockfile
+      
       - name: Type Check
         run: pnpm check
+      
       - name: Run Tests
-        run: pnpm test || echo "Tests failed or none exist; continuing" # adjust based on test stability
+        run: pnpm test || echo "Tests failed or none exist; continuing"
+      
       - name: Build Docker image
         run: |
           IMAGE=ghcr.io/${{ github.repository_owner }}/fifa-vip:latest
           IMAGE=$(echo $IMAGE | tr '[:upper:]' '[:lower:]')
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
           docker build -t $IMAGE .
+      
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      
       - name: Push image
-        run: docker push $IMAGE
+        run: docker push ${{ env.IMAGE }}
+      
       - name: Summary
-        run: echo "Pushed $IMAGE" >> $GITHUB_STEP_SUMMARY
+        run: echo "Pushed ${{ env.IMAGE }}" >> $GITHUB_STEP_SUMMARY
